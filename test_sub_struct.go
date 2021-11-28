@@ -117,7 +117,7 @@ func (s TestSubStruct) EncodeWithBytes(out []byte) (int, error) {
 }
 
 func (s TestSubStruct) Encode() ([]byte, error) {
-	// encode後の最大サイズを計算する
+	// エンコードに必要な最大サイズを計算する
 	size := 0
 	// Str
 	size += binary.MaxVarintLen64

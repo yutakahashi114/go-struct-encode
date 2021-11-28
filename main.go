@@ -24,6 +24,20 @@ const (
 
 func main() {
 	{
+		i := 12345678
+		bytes, nEn := IntEncode(i)
+		decoded, nDe := IntDecode(bytes)
+		fmt.Println(i, nEn, decoded, nDe)
+		printDiff(i, decoded)
+	}
+	{
+		u := uint(12345678)
+		bytes, nEn := UintEncode(u)
+		decoded, nDe := UintDecode(bytes)
+		fmt.Println(u, nEn, decoded, nDe)
+		printDiff(u, decoded)
+	}
+	{
 		str := "test_string"
 		bytes, nEn := StringEncode(str)
 		decoded, nDe := StringDecode(bytes)
@@ -265,6 +279,30 @@ func TimeMarshalBinary(t time.Time, out []byte) (int, error) {
 	out[14] = byte(offsetMin)
 
 	return VarintLenTime, nil
+}
+
+func IntEncode(i int) ([]byte, int) {
+	// intの変換に必要な最大容量を確保
+	out := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(out, int64(i))
+	return out[:n], n
+}
+
+func IntDecode(in []byte) (int, int) {
+	intRaw, intLen := binary.Varint(in)
+	return int(intRaw), intLen
+}
+
+func UintEncode(u uint) ([]byte, int) {
+	// uintの変換に必要な最大容量を確保
+	out := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(out, uint64(u))
+	return out[:n], n
+}
+
+func UintDecode(in []byte) (uint, int) {
+	uintRaw, uintLen := binary.Uvarint(in)
+	return uint(uintRaw), uintLen
 }
 
 func StringEncode(str string) ([]byte, int) {
