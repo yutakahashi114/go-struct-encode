@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encode/proto"
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/json"
@@ -12,6 +13,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+	protobuf "github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -101,18 +104,27 @@ func main() {
 		printDiff(slice, decoded)
 	}
 	{
-		data := createTestSubStruct()
-		bytes, err := data.Encode()
-		fataiIf(err)
-
+		data := TestSubStruct{
+			Str:    "test_string",
+			Bool:   true,
+			Int:    1,
+			Int16:  10000,
+			Int64:  1000000000000000000,
+			Uint:   1,
+			Uint8:  100,
+			Uint32: 1000000000,
+			Time:   time.Now(),
+		}
+		bytes, _ := data.Encode()
 		fmt.Println(len(bytes))
 
 		decoded := TestSubStruct{}
-		_, err = decoded.Decode(bytes)
-		fataiIf(err)
+		decoded.Decode(bytes)
 
 		if diff := cmp.Diff(data, decoded); diff != "" {
 			fmt.Println(diff)
+		} else {
+			fmt.Println("no diff")
 		}
 	}
 	data := createTestStructs(10000)
@@ -167,6 +179,21 @@ func main() {
 
 		decoded := TestStructs{}
 		_, err = decoded.Decode(bytes)
+		fataiIf(err)
+
+		if diff := cmp.Diff(data, decoded); diff != "" {
+			fmt.Println(diff)
+		}
+	}
+	{
+		data := makeProtoTestStructs(data)
+		bytes, err := protobuf.Marshal(data)
+		fataiIf(err)
+
+		fmt.Println(len(bytes))
+
+		decoded := &proto.TestStructs{}
+		err = protobuf.Unmarshal(bytes, decoded)
 		fataiIf(err)
 
 		if diff := cmp.Diff(data, decoded); diff != "" {
@@ -418,4 +445,48 @@ func SliceDecode(in []byte) ([]int, int) {
 		n += intLen
 	}
 	return slice, n
+}
+
+func makeProtoTestStructs(ss TestStructs) *proto.TestStructs {
+	ssProto := make([]*proto.TestStruct, len(ss))
+	for i, s := range ss {
+		subs := make([]*proto.TestSubStruct, len(s.Subs))
+		for j, sub := range s.Subs {
+			subs[j] = makeProtoTestSubStruct(&sub)
+		}
+		ts, err := types.TimestampProto(s.Time)
+		fataiIf(err)
+		ssProto[i] = &proto.TestStruct{
+			Str:        s.Str,
+			Bool:       s.Bool,
+			Int:        int64(s.Int),
+			Int16:      int32(s.Int16),
+			Int64:      s.Int64,
+			Uint:       uint64(s.Uint),
+			Uint8:      uint32(s.Uint8),
+			Uint32:     s.Uint32,
+			Time:       ts,
+			SubPointer: makeProtoTestSubStruct(s.SubPointer),
+			Subs:       subs,
+		}
+	}
+	return &proto.TestStructs{
+		Ss: ssProto,
+	}
+}
+
+func makeProtoTestSubStruct(sub *TestSubStruct) *proto.TestSubStruct {
+	ts, err := types.TimestampProto(sub.Time)
+	fataiIf(err)
+	return &proto.TestSubStruct{
+		Str:    sub.Str,
+		Bool:   sub.Bool,
+		Int:    int64(sub.Int),
+		Int16:  int32(sub.Int16),
+		Int64:  sub.Int64,
+		Uint:   uint64(sub.Uint),
+		Uint8:  uint32(sub.Uint8),
+		Uint32: sub.Uint32,
+		Time:   ts,
+	}
 }
